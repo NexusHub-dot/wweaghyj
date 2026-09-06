@@ -1,0 +1,401 @@
+{
+  "geode": "5.10.1",
+  "gd": {
+    "win": "2.2081"
+  },
+  "id": "alan.pulse_macro",
+  "name": "Pulse Macro",
+  "version": "v1.4.6",
+  "developer": "Alan",
+  "description": "Macro recording with practice checkpoints, speedhack timing, and built-in frame-window analysis.",
+  "settings": {
+    "pause-key": {
+      "type": "keybind",
+      "name": "Pause / resume gameplay or analysis",
+      "default": "P",
+      "category": "gameplay"
+    },
+    "record-key": {
+      "type": "keybind",
+      "name": "Record / save",
+      "default": "F6",
+      "category": "gameplay"
+    },
+    "play-key": {
+      "type": "keybind",
+      "name": "Playback / stop",
+      "default": "F7",
+      "category": "gameplay"
+    },
+    "stop-key": {
+      "type": "keybind",
+      "name": "Stop and save recording",
+      "default": "F8",
+      "category": "gameplay"
+    },
+    "slot": {
+      "type": "int",
+      "name": "Macro slot",
+      "default": 1,
+      "min": 1,
+      "max": 20
+    },
+    "show-status": {
+      "type": "bool",
+      "name": "Show status",
+      "default": true
+    },
+    "link-frame-windows": {
+      "type": "bool",
+      "name": "Record built-in Frame Windows reference",
+      "description": "F6 records the macro and built-in frame reference together, including classic practice checkpoints.",
+      "default": true
+    },
+    "speedhack-compatibility": {
+      "type": "bool",
+      "name": "Speedhack compatibility",
+      "description": "Use fixed game-time updates for new recordings, allowing slow recording and normal-speed playback. Saved macros retain their own timing mode. Keep physics/TPS settings unchanged.",
+      "default": true
+    },
+    "desync-tolerance": {
+      "type": "float",
+      "name": "Position tolerance",
+      "description": "Maximum distance from the recorded position for each active player. Allow small position drift raises values below 5 to 5 during macro playback. No position corrections are applied. Frame analysis uses its own checks.",
+      "default": 1.0,
+      "min": 0.05,
+      "max": 10.0
+    },
+    "allow-small-drift": {
+      "type": "bool",
+      "name": "Allow small position drift",
+      "description": "Continue macro playback within 5 game units of each active player's recorded position (or your larger Position tolerance). Off uses Position tolerance directly. Timing changes and actual deaths still stop playback.",
+      "default": true
+    },
+    "repair-title": {
+      "type": "title",
+      "name": "Playback Auto-Repair"
+    },
+    "auto-repair-playback": {
+      "type": "bool",
+      "name": "Auto-repair deterministic playback deaths",
+      "default": true,
+      "description": "If a saved macro replay dies, retry the original route once. If the death reproduces, search nearby 240 Hz input frames on recent jump transitions. Every candidate must survive the entire remaining macro; the chosen frame is the center of the widest passing region and is confirmed once more before the macro is saved. The previous file is kept as .bak."
+    },
+    "repair-radius": {
+      "type": "int",
+      "name": "Repair search radius (frames)",
+      "default": 8,
+      "min": 1,
+      "max": 20,
+      "description": "Search this many 240 Hz physics frames earlier and later around a recent input. Larger values are slower."
+    },
+    "repair-lookback-inputs": {
+      "type": "int",
+      "name": "Recent inputs to try",
+      "default": 6,
+      "min": 1,
+      "max": 12,
+      "description": "If shifting the most recent jump transition cannot repair the full route, try this many earlier jump transitions from the same player (up to 3 seconds back)."
+    },
+    "repair-speed": {
+      "type": "int",
+      "name": "Repair ticks per rendered frame",
+      "default": 128,
+      "min": 1,
+      "max": 240,
+      "description": "Fast deterministic replay batch size used only while searching for a repair."
+    },
+    "repair-budget": {
+      "type": "int",
+      "name": "Repair time budget (ms/frame)",
+      "default": 10,
+      "min": 1,
+      "max": 30,
+      "description": "Caps repair work per rendered frame so F8 cancel remains responsive."
+    },
+    "fwl-auto-analyze-pulse": {
+      "type": "bool",
+      "default": true,
+      "name": "Analyze after Pulse saves",
+      "description": "After a linked Pulse recording is saved, automatically run frame-window trials. F4 cancels analysis. Disable to start trials manually."
+    },
+    "fwl-display-title": {
+      "type": "title",
+      "name": "Display"
+    },
+    "fwl-enabled": {
+      "type": "bool",
+      "default": true,
+      "name": "Enable Frame Window Lab"
+    },
+    "fwl-show-hud": {
+      "type": "bool",
+      "default": true,
+      "name": "Show top-left counter"
+    },
+    "fwl-show-circles": {
+      "type": "bool",
+      "default": true,
+      "name": "Show input circles"
+    },
+    "fwl-min-frame": {
+      "type": "int",
+      "default": 1,
+      "min": 1,
+      "max": 20,
+      "name": "First frame bin"
+    },
+    "fwl-max-frame": {
+      "type": "int",
+      "default": 12,
+      "min": 1,
+      "max": 20,
+      "name": "Last frame bin"
+    },
+    "fwl-cumulative": {
+      "type": "bool",
+      "default": false,
+      "name": "Cumulative counts",
+      "description": "Each row counts windows at or below that frame width."
+    },
+    "fwl-include-releases": {
+      "type": "bool",
+      "default": true,
+      "name": "Count releases too"
+    },
+    "fwl-player-filter": {
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 2,
+      "name": "Count player (0 = both)"
+    },
+    "fwl-show-precision": {
+      "type": "bool",
+      "default": true,
+      "name": "Show base precision score",
+      "description": "NaN's base 24-hour model. Censored widths give an upper-bound estimate; no nerve counter."
+    },
+    "fwl-hud-scale": {
+      "type": "float",
+      "default": 0.8,
+      "min": 0.35,
+      "max": 1.5,
+      "name": "Counter scale"
+    },
+    "fwl-hud-x": {
+      "type": "int",
+      "default": 8,
+      "min": 0,
+      "max": 1000,
+      "name": "Counter distance from left"
+    },
+    "fwl-hud-y": {
+      "type": "int",
+      "default": 8,
+      "min": 0,
+      "max": 1000,
+      "name": "Counter distance from top"
+    },
+    "fwl-panel-opacity": {
+      "type": "int",
+      "default": 165,
+      "min": 0,
+      "max": 255,
+      "name": "Background opacity"
+    },
+    "fwl-circle-radius": {
+      "type": "float",
+      "default": 9,
+      "min": 3,
+      "max": 25,
+      "name": "Input circle radius"
+    },
+    "fwl-circle-lifetime": {
+      "type": "float",
+      "default": 2,
+      "min": 0.1,
+      "max": 30,
+      "name": "Circle lifetime (seconds)"
+    },
+    "fwl-analysis-title": {
+      "type": "title",
+      "name": "Analysis"
+    },
+    "fwl-analysis-speed": {
+      "type": "int",
+      "default": 64,
+      "min": 1,
+      "max": 240,
+      "name": "Analysis ticks per rendered frame",
+      "description": "A time budget also limits each batch so the cancel button stays responsive."
+    },
+    "fwl-checkpoint-cache": {
+      "type": "bool",
+      "default": true,
+      "name": "Accelerate analysis with native checkpoints",
+      "description": "Validate hidden checkpoint restores before using them. Unreliable checkpoints fall back to full replay. Disable to compare with full replay analysis."
+    },
+    "fwl-input-aware-checkpoints": {
+      "type": "bool",
+      "default": true,
+      "name": "Place analysis checkpoints near inputs",
+      "description": "Recommended. Prioritizes universal safe checkpoints before inputs, then adds closer candidate-specific checkpoints up to the configured cache limit. Turn off to use periodic spacing instead."
+    },
+    "fwl-checkpoint-limit": {
+      "type": "int",
+      "default": 256,
+      "min": 32,
+      "max": 256,
+      "name": "Maximum analysis checkpoints",
+      "description": "Higher values keep dense macros closer to each tested input and reduce replay work. 256 is the safe hard cap; lower this if a very large level uses too much memory."
+    },
+    "fwl-checkpoint-spacing": {
+      "type": "int",
+      "default": 180,
+      "min": 180,
+      "max": 2400,
+      "name": "Analysis checkpoint spacing (physics ticks)",
+      "description": "Used when input-aware checkpoint placement is off. 180 ticks is 0.75 seconds; long references automatically widen spacing to stay within 128 snapshots."
+    },
+    "fwl-full-macro-windows": {
+      "type": "bool",
+      "default": false,
+      "name": "Require survival through the entire macro",
+      "description": "Off: wave measures until the next press OR release (next direction change); other modes use the next press. Last input uses the recording end. On: require the entire remaining macro to survive. Re-analyze after changing."
+    },
+    "fwl-analysis-budget": {
+      "type": "int",
+      "default": 8,
+      "min": 2,
+      "max": 30,
+      "name": "Analysis time budget (milliseconds)"
+    },
+    "fwl-controls-title": {
+      "type": "title",
+      "name": "Controls"
+    },
+    "fwl-toggle-key": {
+      "type": "keybind",
+      "default": "F3",
+      "name": "Toggle counter",
+      "category": "gameplay"
+    },
+    "fwl-panel-key": {
+      "type": "keybind",
+      "default": "F4",
+      "name": "Open analysis controls",
+      "category": "gameplay"
+    },
+    "fwl-record-key": {
+      "type": "keybind",
+      "default": "F5",
+      "name": "Start / stop reference recording",
+      "category": "gameplay"
+    },
+    "fwl-colors-title": {
+      "type": "title",
+      "name": "Frame colors (1\u201320)"
+    },
+    "fwl-color-1": {
+      "type": "color",
+      "default": "#FF4545",
+      "name": "1-frame color"
+    },
+    "fwl-color-2": {
+      "type": "color",
+      "default": "#FF6945",
+      "name": "2-frame color"
+    },
+    "fwl-color-3": {
+      "type": "color",
+      "default": "#FF8D45",
+      "name": "3-frame color"
+    },
+    "fwl-color-4": {
+      "type": "color",
+      "default": "#FFAE45",
+      "name": "4-frame color"
+    },
+    "fwl-color-5": {
+      "type": "color",
+      "default": "#FFD045",
+      "name": "5-frame color"
+    },
+    "fwl-color-6": {
+      "type": "color",
+      "default": "#F0E84A",
+      "name": "6-frame color"
+    },
+    "fwl-color-7": {
+      "type": "color",
+      "default": "#CFED4F",
+      "name": "7-frame color"
+    },
+    "fwl-color-8": {
+      "type": "color",
+      "default": "#A5EE5F",
+      "name": "8-frame color"
+    },
+    "fwl-color-9": {
+      "type": "color",
+      "default": "#7FEC7A",
+      "name": "9-frame color"
+    },
+    "fwl-color-10": {
+      "type": "color",
+      "default": "#5EE99A",
+      "name": "10-frame color"
+    },
+    "fwl-color-11": {
+      "type": "color",
+      "default": "#49E1BB",
+      "name": "11-frame color"
+    },
+    "fwl-color-12": {
+      "type": "color",
+      "default": "#46D7D8",
+      "name": "12-frame color"
+    },
+    "fwl-color-13": {
+      "type": "color",
+      "default": "#47BCEB",
+      "name": "13-frame color"
+    },
+    "fwl-color-14": {
+      "type": "color",
+      "default": "#509DEF",
+      "name": "14-frame color"
+    },
+    "fwl-color-15": {
+      "type": "color",
+      "default": "#647FEE",
+      "name": "15-frame color"
+    },
+    "fwl-color-16": {
+      "type": "color",
+      "default": "#846AEB",
+      "name": "16-frame color"
+    },
+    "fwl-color-17": {
+      "type": "color",
+      "default": "#A367E7",
+      "name": "17-frame color"
+    },
+    "fwl-color-18": {
+      "type": "color",
+      "default": "#C36DE1",
+      "name": "18-frame color"
+    },
+    "fwl-color-19": {
+      "type": "color",
+      "default": "#DE7CCF",
+      "name": "19-frame color"
+    },
+    "fwl-color-20": {
+      "type": "color",
+      "default": "#EE94BA",
+      "name": "20-frame color"
+    }
+  }
+}

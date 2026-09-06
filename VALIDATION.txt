@@ -1,0 +1,67 @@
+# Pulse Macro 1.3.6 validation
+
+Release build and all five CTest suites pass. Windows x64 GD 2.2081 / Geode 5.10.1; startup integration harness OFF.
+
+Evidence: the latest game log loads alan.pulse_macro v1.3.4 and reports Cobwebs position desync after approximately 26 seconds. The full tape contains 7214 steps / 202 inputs. P2 recorded X changes from 11931.9863 to zero at step 5991, 24.9625 seconds. The old checker always compared both players and did not report drift magnitude or active dual state. An inactive-player false stop is plausible, not confirmed as the exact cause of this replay failure.
+
+Playback now passes native m_gameState.m_isDualMode to the core checker. Outside dual mode, P2 coordinates are ignored; P1 and timing remain checked. Dual mode checks both players. Errors report step, distances, and limit. The existing threshold uses Euclidean distance, and earlier per-axis wording is corrected.
+
+New regression verifies a dormant P2 coordinate difference of approximately 12,000 units does not stop single-player playback, the same mismatch rejects in dual mode without consuming a tick, and P1 mismatch/timing changes still reject. Existing speed/FPS, library, pause/practice, and analyzer suites remain passing.
+
+No live UI/game testing was performed, as requested. The exact cause of the user's stop and behavior of this fix in GD remain unverified. The new diagnostic message is intended to make any remaining failure identifiable. Existing saves and analysis data are unchanged.
+
+
+1.3.6 frame-analysis regression: validation poses now carry dual-mode metadata for new references. Legacy references use the replay's current dual state. P1 position/Y-velocity are always checked; P2 position/Y-velocity are checked only while dual is active. Core tests cover dormant-P2 acceptance, dual-P2 rejection, P1 rejection, and recorded dual-state mismatch.
+
+Pulse 1.3.9 regression:
+- Completed references are judged by survival through the recorded endpoint.
+- PlayLayer::levelComplete is accepted when emitted but is not required during analysis test mode.
+- This prevents a valid replay that visibly reaches 100% from timing out and being mislabeled as a reference desync.
+- Candidate deaths before the endpoint still fail normally; baseline pose validation remains active.
+
+1.3.11 live-log diagnosis:
+- First candidate reached input 1 offset -1, endpoint 143, and failed naturally at physics tick 91.
+- Only after that completed candidate did the analyzer abort on pre-shift pose step 60 during the next reset.
+- Candidate Early/Late pre-shift poses are therefore re-established per trial; final baseline remains strict and no physics correction is applied.
+
+
+Pulse 1.3.12 regression:
+- A stable repeated failure remains a normal failed boundary.
+- If the repeated trial survives or dies at a different tick, analysis does not abort.
+- The boundary is conservatively accepted as a failure using the first observed failure tick, so uncertainty cannot widen the measured window.
+- The analysis is flagged uncertain and the UI warns at completion that saved results could be inaccurate.
+- Baseline, scheduler, and TPS incompatibility failures remain fatal.
+
+
+Pulse 1.4.1 checkpoint-cache continuation:
+- Source version bumped to v1.4.1 for GD 2.2081 / Geode 5.10.1.
+- Cached candidate restores now explicitly set PlayLayer::m_currentCheckpoint to the analyzer-owned CheckpointObject before resetLevel().
+- Full-start fallback and analysis cleanup clear the private checkpoint array/current pointer before resetLevelFromStart(), preventing a stale analysis checkpoint from leaking into a supposed level-start reset.
+- Fresh-install checkpoint spacing is 180 ticks (0.75 s); the existing 128-snapshot cap still automatically widens spacing for long references.
+- Analysis progress now includes current input/offset, checkpoint/start origin, elapsed time, and a rough ETA after at least three completed inputs.
+- last-analysis.json includes checkpointCount in addition to restores/full restarts/physics updates/fallbacks.
+- The source includes a GitHub Actions Win64 Release workflow using geode-sdk/build-geode-mod with SDK v5.10.1.
+- Standalone/core tests: six of six pass after these changes.
+- No live GD test and no fresh .geode compilation were performed in this sandbox; Geode's Windows cross-toolchain/SDK is not installed here.
+
+Pulse 1.4.5 candidate-aware checkpoint acceleration:
+- Search semantics verified: each side stops at its first failure; early failure switches to late, and late failure advances to the next input.
+- Failed boundaries still receive one confirmation replay before the search state advances.
+- Candidate restore selection uses min(original tick, shifted tick) - 12, so no checkpoint can be after either the original or shifted target event.
+- Input-aware planning preserves universal T-32 anchors first, then uses spare capacity for T-13/T-16/T-20/T-24/T-28 candidate tiers.
+- Default/hard analysis checkpoint limit is 256; the setting may be lowered to 32 for memory-heavy levels.
+- Overlapping 60-tick checkpoint validation windows are all captured from the opening baseline; dense checkpoints no longer starve older checkpoints of validation samples.
+- Standalone/core CTest: 6/6 pass, including candidate-boundary safety, dense-plan cap/ordering, overlay equivalence, held-input restoration metadata, and first-failure search progression.
+- No live GD run or Win64 link was performed in this Linux sandbox.
+
+
+Pulse 1.4.6 playback repair:
+- clean original retry is required before any edit; a non-reproducible death is not modified
+- same-channel press/release ordering is enforced for shifted repair events
+- recent jump-transition candidates are searched newest-first
+- every candidate must survive the full suffix / recorded endpoint
+- the center of the widest contiguous passing offset region is selected
+- the winner gets a final full-route confirmation before save
+- successful confirmation captures a new complete trajectory, preserving later position validation
+- atomic save keeps the original macro as .bak
+- helper regression tests cover shift legality, event ordering, candidate selection, and robust-center choice
