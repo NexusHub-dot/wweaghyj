@@ -1,0 +1,36 @@
+name: Build Win64 Geode
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure standalone tests
+        run: cmake -S . -B build-core -DPULSE_CORE_ONLY=ON -DBUILD_TESTING=ON
+
+      - name: Build standalone tests
+        run: cmake --build build-core --config Release
+
+      - name: Run standalone tests
+        run: ctest --test-dir build-core -C Release --output-on-failure
+
+      - name: Build Pulse Macro Win64
+        id: build
+        uses: geode-sdk/build-geode-mod@main
+        with:
+          sdk: v5.10.1
+          target: Win64
+          build-config: Release
+          configure-args: -DBUILD_TESTING=OFF
+
+      - name: Upload .geode
+        uses: actions/upload-artifact@v4
+        with:
+          name: PulseMacro-v1.4.6-Win64
+          path: ${{ steps.build.outputs.build-output }}
